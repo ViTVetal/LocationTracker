@@ -1,14 +1,19 @@
 package com.gocodes.locationtracker.ui.activities;
 
 import android.Manifest;
+import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
+import android.location.Criteria;
+import android.location.Location;
+import android.location.LocationManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
@@ -16,19 +21,30 @@ import android.widget.SeekBar;
 import android.widget.Spinner;
 
 import com.gocodes.locationtracker.R;
+import com.gocodes.locationtracker.network.requests.SendLocationRequest;
+import com.gocodes.locationtracker.utils.GlobalVariables;
 import com.gocodes.locationtracker.utils.SizeConverter;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
 import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
+import com.google.android.gms.maps.model.LatLng;
 import com.joanzapata.iconify.IconDrawable;
 import com.joanzapata.iconify.Iconify;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
+
+import org.json.JSONObject;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
     private ImageView ivLocation, ivSettings, ivRefresh;
     private FloatingActionButton fab;
     private Spinner spMapType;
+
+    private LocationManager locationManager;
 
     private GoogleMap map;
 
@@ -106,7 +122,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 // result of the request.
             }
         } else {
-
             SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                     .findFragmentById(R.id.map);
             mapFragment.getMapAsync(this);
@@ -117,6 +132,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     public void onMapReady(GoogleMap googleMap) {
         map = googleMap;
         map.setMyLocationEnabled(true);
+
+        Location location = getLastKnownLocation();
+        Log.d("myLogs", location + " loc");
+        if (location != null) {
+            map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 12));
+        }
 
       //  googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLocation, 12));
     }
@@ -142,6 +163,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                     // permission was granted, yay! Do the
                     // contacts-related task you need to do.
+
                     SupportMapFragment mapFragment = (SupportMapFragment) getSupportFragmentManager()
                             .findFragmentById(R.id.map);
                     mapFragment.getMapAsync(this);
@@ -153,5 +175,42 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                 return;
             }
         }
+    }
+
+    public void onClickUpdateLocation(View view) {
+        Location location = getLastKnownLocation();
+        Log.d("myLogs", location + " loc");
+        if (location != null) {
+            Map<String, String> params = new HashMap<String, String>();
+            params.put("email", GlobalVariables.getEmail(this));
+            params.put("password", GlobalVariables.getPassword(this));
+            params.put("assetId", GlobalVariables.getAssertId(this));
+            params.put("latitude", String.valueOf(location.getLatitude()));
+            params.put("longitude", String.valueOf(location.getLongitude()));
+            params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
+            params.put("customValue1", "934");
+
+            JSONObject param = new JSONObject(params);
+
+            SendLocationRequest.send(this, param);
+        }
+    }
+
+
+    private Location getLastKnownLocation() {
+        LocationManager locationManager = (LocationManager)getApplicationContext().getSystemService(LOCATION_SERVICE);
+        List<String> providers = locationManager.getProviders(true);
+        Location bestLocation = null;
+        for (String provider : providers) {
+            Location l = locationManager.getLastKnownLocation(provider);
+            if (l == null) {
+                continue;
+            }
+            if (bestLocation == null || l.getAccuracy() < bestLocation.getAccuracy()) {
+                // Found best last known location: %s", l);
+                bestLocation = l;
+            }
+        }
+        return bestLocation;
     }
 }

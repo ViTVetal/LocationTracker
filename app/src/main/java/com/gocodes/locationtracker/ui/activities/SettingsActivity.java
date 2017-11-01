@@ -71,40 +71,6 @@ public class SettingsActivity extends AppCompatActivity {
             public void onStopTrackingTouch(SeekBar seekBar) {
             }
         });
-
-        Map<String, String> params = new HashMap<String, String>();
-        params.put("email", GlobalVariables.getEmail(this));
-        params.put("password", GlobalVariables.getPassword(this));
-        params.put("assetId", GlobalVariables.getAssertId(this));
-        params.put("latitude", "48.386402");
-        params.put("longitude", "22.718983");
-        params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
-        params.put("customValue1", "934");
-
-        JSONObject param = new JSONObject(params);
-
-        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, GlobalVariables.SERVER_URL, param,
-                new Response.Listener<JSONObject>() {
-                    @Override
-                    public void onResponse(JSONObject response) {
-                        Log.d("myLogs", "response :"+response);
-                    }
-                }, new Response.ErrorListener() {
-            @Override
-            public void onErrorResponse(VolleyError error) {
-                Log.d("myLogs", "Error: " + error.toString());
-            }
-        }){
-
-            @Override
-            public Map<String, String> getHeaders() throws AuthFailureError {
-                Map<String, String> params = new HashMap<String, String>();
-                params.put("Content-Type", "application/json");
-                return params;
-            }
-        };
-
-        //API.getInstance(this).addToRequestQueue(jsonObjectRequest);
     }
 
     public void onClickUpdate(View v) {
