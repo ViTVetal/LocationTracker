@@ -12,6 +12,10 @@
     <string name="update_on_move">Update on Move</string>
     <string name="update_history">Update History</string>
     <string name="real_time">Real-Time Update</string>
+    <string name="incorrect_email">Incorrect email</string>
+    <string name="empty_password">Password cannot be empty</string>
+    <string name="empty_assert_id">AssertId cannot be empty</string>
+    <string name="updated_successfully">Updated Successfully</string>
 
     <string-array name="map_types">
         <item>Map</item>

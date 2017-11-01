@@ -18,6 +18,6 @@ public class TrackerApplication extends Application {
 
         Iconify.with(new FontAwesomeModule());
 
-      //  RequestQueue queue = API.getInstance(this.getApplicationContext()).getRequestQueue();
+        RequestQueue queue = API.getInstance(this.getApplicationContext()).getRequestQueue();
     }
 }
