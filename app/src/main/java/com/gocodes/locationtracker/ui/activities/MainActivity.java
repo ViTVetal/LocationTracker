@@ -1,6 +1,7 @@
 package com.gocodes.locationtracker.ui.activities;
 
 import android.Manifest;
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
 import android.content.pm.PackageManager;
@@ -22,7 +23,9 @@ import android.widget.Spinner;
 
 import com.gocodes.locationtracker.R;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
+import com.gocodes.locationtracker.services.LocationService;
 import com.gocodes.locationtracker.utils.GlobalVariables;
+import com.gocodes.locationtracker.utils.LogWriter;
 import com.gocodes.locationtracker.utils.SizeConverter;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -70,8 +73,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         ivRefresh = (ImageView) findViewById(R.id.ivRefresh);
 
         fab = (FloatingActionButton) findViewById(R.id.fab);
-        fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_play)
-                .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+
+        if(isServiceRunning(LocationService.class)) {
+            fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_pause)
+                    .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+        } else {
+            fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_play)
+                    .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+        }
+
 
         spMapType = (Spinner) findViewById(R.id.spMapType);
         spMapType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -143,8 +153,18 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void onClickChangeState(View v) {
-        fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_pause)
-                .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+        Intent intent = new Intent(this, LocationService.class);
+        if(isServiceRunning(LocationService.class)) {
+            stopService(intent);
+
+            fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_play)
+                    .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+        } else {
+            startService(intent);
+
+            fab.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_pause)
+                    .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
+        }
     }
 
     public void onClickSettings(View v) {
@@ -212,5 +232,15 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
         return bestLocation;
+    }
+
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
