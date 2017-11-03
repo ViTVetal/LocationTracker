@@ -1,5 +1,8 @@
 package com.gocodes.locationtracker.ui.activities;
 
+import android.app.ActivityManager;
+import android.content.Context;
+import android.content.Intent;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
 import android.text.TextUtils;
@@ -18,6 +21,7 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
 import com.gocodes.locationtracker.R;
+import com.gocodes.locationtracker.services.LocationService;
 import com.gocodes.locationtracker.utils.GlobalVariables;
 
 import org.json.JSONObject;
@@ -109,6 +113,13 @@ public class SettingsActivity extends AppCompatActivity {
         GlobalVariables.setUpdateHistory(cbUpdateHistory.isChecked(), this);
         GlobalVariables.setRealTimeUpdate(cbRealTime.isChecked(), this);
 
+        Intent intent = new Intent(this, LocationService.class);
+
+        if(isServiceRunning(LocationService.class)) {
+            stopService(intent);
+            startService(intent);
+        }
+
         Toast toast = Toast.makeText(this, getResources().getString(R.string.updated_successfully), Toast.LENGTH_LONG);
         toast.show();
     }
@@ -126,5 +137,15 @@ public class SettingsActivity extends AppCompatActivity {
         }
 
         return super.onOptionsItemSelected(item);
+    }
+
+    private boolean isServiceRunning(Class<?> serviceClass) {
+        ActivityManager manager = (ActivityManager) getSystemService(Context.ACTIVITY_SERVICE);
+        for (ActivityManager.RunningServiceInfo service : manager.getRunningServices(Integer.MAX_VALUE)) {
+            if (serviceClass.getName().equals(service.service.getClassName())) {
+                return true;
+            }
+        }
+        return false;
     }
 }
