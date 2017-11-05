@@ -13,7 +13,11 @@ import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
 import android.util.Log;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
 import com.gocodes.locationtracker.R;
+import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
 import com.gocodes.locationtracker.ui.activities.MainActivity;
 import com.gocodes.locationtracker.utils.GlobalVariables;
@@ -222,7 +226,7 @@ public class LocationService extends Service {
             Map<String, String> params = new HashMap<String, String>();
             params.put("email", GlobalVariables.getEmail(this));
             params.put("password", GlobalVariables.getPassword(this));
-            params.put("assetId", GlobalVariables.getAssertId(this));
+            params.put("assetId", GlobalVariables.getAssetId(this).replaceAll("-", ""));
             params.put("latitude", String.valueOf(location.getLatitude()));
             params.put("longitude", String.valueOf(location.getLongitude()));
             params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
@@ -230,7 +234,29 @@ public class LocationService extends Service {
 
             JSONObject param = new JSONObject(params);
 
-            SendLocationRequest.send(this, param);
+
+            SendLocationRequest jsonObjectRequest = new SendLocationRequest(param,
+                    new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            Log.d("myLogs", "response :"+response);
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    Log.d("myLogs", "Error: " + error.toString());
+                }
+            }){
+
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("Content-Type", "application/json");
+                    return params;
+                }
+            };
+
+            API.getInstance(this).addToRequestQueue(jsonObjectRequest);
         }
     }
 }

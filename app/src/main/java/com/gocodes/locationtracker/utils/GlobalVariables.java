@@ -15,7 +15,7 @@ public class GlobalVariables {
     private static final String TRACKER_PREFERENCES = "TRACKER_PREFERENCES";
     private static final String EMAIL = "email";
     private static final String PASSWORD = "password";
-    private static final String ASSERT_ID = "assert_id";
+    private static final String ASSET_ID = "asset_id";
     private static final String UPDATE_FREQUENCY = "frequency";
     private static final String UPDATE_ON_MOVE = "update_on_move";
     private static final String UPDATE_HISTORY = "update_history";
@@ -49,18 +49,18 @@ public class GlobalVariables {
         return pref.getString(PASSWORD, "");
     }
 
-    public static void setAssertID(String assertId, Context context) {
+    public static void setAssetID(String assetId, Context context) {
         SharedPreferences pref = context.getSharedPreferences(TRACKER_PREFERENCES,
                 Context.MODE_PRIVATE);
         SharedPreferences.Editor edit = pref.edit();
-        edit.putString(ASSERT_ID, assertId);
+        edit.putString(ASSET_ID, assetId);
         edit.apply();
     }
 
-    public static String getAssertId(Context context) {
+    public static String getAssetId(Context context) {
         SharedPreferences pref = context.getSharedPreferences(TRACKER_PREFERENCES,
                 Context.MODE_PRIVATE);
-        return pref.getString(ASSERT_ID, "");
+        return pref.getString(ASSET_ID, "");
     }
 
     public static void setFrequencyIndex(int frequncyIndex, Context context) {

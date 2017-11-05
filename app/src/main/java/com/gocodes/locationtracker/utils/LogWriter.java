@@ -20,7 +20,7 @@ import static android.content.Context.MODE_APPEND;
 public class LogWriter {
     public static void writeToFile(String data)
     {
-        // Get the directory for the user's public pictures directory.
+     /*   // Get the directory for the user's public pictures directory.
         final File path =
                 Environment.getExternalStoragePublicDirectory
                         (
@@ -51,6 +51,6 @@ public class LogWriter {
         catch (IOException e)
         {
             Log.e("Exception", "File write failed: " + e.toString());
-        }
+        } */
     }
 }

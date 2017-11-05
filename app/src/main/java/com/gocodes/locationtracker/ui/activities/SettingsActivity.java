@@ -1,16 +1,24 @@
 package com.gocodes.locationtracker.ui.activities;
 
+import android.app.Activity;
 import android.app.ActivityManager;
 import android.content.Context;
 import android.content.Intent;
+import android.graphics.Color;
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.Toolbar;
+import android.text.Editable;
 import android.text.TextUtils;
+import android.text.TextWatcher;
 import android.util.Log;
 import android.view.MenuItem;
+import android.view.MotionEvent;
 import android.view.View;
+import android.view.inputmethod.InputMethodManager;
 import android.widget.CheckBox;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.TextView;
 import android.widget.Toast;
@@ -23,6 +31,9 @@ import com.android.volley.toolbox.JsonObjectRequest;
 import com.gocodes.locationtracker.R;
 import com.gocodes.locationtracker.services.LocationService;
 import com.gocodes.locationtracker.utils.GlobalVariables;
+import com.joanzapata.iconify.IconDrawable;
+import com.joanzapata.iconify.Iconify;
+import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
 import org.json.JSONObject;
 
@@ -34,12 +45,15 @@ public class SettingsActivity extends AppCompatActivity {
     private SeekBar seekBar;
     private TextView tvFrequency;
     private CheckBox cbUpdateOnMove, cbUpdateHistory, cbRealTime;
+    private ImageView ivLogs;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_settings);
 
+        Toolbar tb = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(tb);
         getSupportActionBar().setDisplayHomeAsUpEnabled(true);
 
         etEmail = (EditText) findViewById(R.id.etEmail);
@@ -47,7 +61,7 @@ public class SettingsActivity extends AppCompatActivity {
         etPassword = (EditText) findViewById(R.id.etPassword);
         etPassword.setText(GlobalVariables.getPassword(this));
         etAssetId = (EditText) findViewById(R.id.etAssetId);
-        etAssetId.setText(GlobalVariables.getAssertId(this));
+        etAssetId.setText(GlobalVariables.getAssetId(this));
 
         cbUpdateOnMove = (CheckBox) findViewById(R.id.cbUpdateOnMove);
         cbUpdateOnMove.setChecked(GlobalVariables.isUpdateOnMove(this));
@@ -73,6 +87,18 @@ public class SettingsActivity extends AppCompatActivity {
 
             @Override
             public void onStopTrackingTouch(SeekBar seekBar) {
+            }
+        });
+
+        ivLogs = (ImageView) findViewById(R.id.ivLogs);
+        ivLogs.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_list)
+                .color(Color.WHITE)
+                .actionBarSize());
+        ivLogs.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(SettingsActivity.this, HistoryActivity.class);
+                startActivity(intent);
             }
         });
     }
@@ -101,8 +127,9 @@ public class SettingsActivity extends AppCompatActivity {
             Toast toast = Toast.makeText(this, getResources().getString(R.string.empty_assert_id), Toast.LENGTH_SHORT);
             toast.show();
             validationError = true;
-        } else
-            GlobalVariables.setAssertID(etAssetId.getText().toString(), this);
+        } else {
+            GlobalVariables.setAssetID(etAssetId.getText().toString(), this);
+        }
 
         if(validationError)
             return;
@@ -147,5 +174,31 @@ public class SettingsActivity extends AppCompatActivity {
             }
         }
         return false;
+    }
+
+    @Override
+    public boolean dispatchTouchEvent(MotionEvent ev) {
+        View v = getCurrentFocus();
+
+        if (v != null &&
+                (ev.getAction() == MotionEvent.ACTION_UP || ev.getAction() == MotionEvent.ACTION_MOVE) &&
+                v instanceof EditText &&
+                !v.getClass().getName().startsWith("android.webkit.")) {
+            int scrcoords[] = new int[2];
+            v.getLocationOnScreen(scrcoords);
+            float x = ev.getRawX() + v.getLeft() - scrcoords[0];
+            float y = ev.getRawY() + v.getTop() - scrcoords[1];
+
+            if (x < v.getLeft() || x > v.getRight() || y < v.getTop() || y > v.getBottom())
+                hideKeyboard(this);
+        }
+        return super.dispatchTouchEvent(ev);
+    }
+
+    public static void hideKeyboard(Activity activity) {
+        if (activity != null && activity.getWindow() != null && activity.getWindow().getDecorView() != null) {
+            InputMethodManager imm = (InputMethodManager)activity.getSystemService(Context.INPUT_METHOD_SERVICE);
+            imm.hideSoftInputFromWindow(activity.getWindow().getDecorView().getWindowToken(), 0);
+        }
     }
 }

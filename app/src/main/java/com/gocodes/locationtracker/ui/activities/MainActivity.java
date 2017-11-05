@@ -14,14 +14,25 @@ import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
+import android.support.v7.widget.Toolbar;
+import android.text.format.DateFormat;
 import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.SeekBar;
 import android.widget.Spinner;
+import android.widget.TextView;
 
+import com.android.volley.AuthFailureError;
+import com.android.volley.Request;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
 import com.gocodes.locationtracker.R;
+import com.gocodes.locationtracker.db.LocalDB;
+import com.gocodes.locationtracker.model.LocationInfo;
+import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
 import com.gocodes.locationtracker.services.LocationService;
 import com.gocodes.locationtracker.utils.GlobalVariables;
@@ -38,14 +49,19 @@ import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
 import org.json.JSONObject;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import io.realm.Realm;
+import io.realm.RealmResults;
+
 public class MainActivity extends AppCompatActivity implements OnMapReadyCallback {
-    private ImageView ivLocation, ivSettings, ivRefresh;
+    private ImageView ivLocation, ivSettings, ivRefresh, ivClock;
     private FloatingActionButton fab;
     private Spinner spMapType;
+    private TextView tvAssetId, tvLastUpdate;
 
     private LocationManager locationManager;
 
@@ -55,10 +71,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     private int check = 0;
 
+    private Realm realm;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
+
+        Toolbar tb = (Toolbar) findViewById(R.id.toolbar);
+        setSupportActionBar(tb);
+
+        TextView tvTitle = (TextView) findViewById(R.id.tvTitle);
+        tvTitle.setText(getResources().getString(R.string.app_name));
+
+        tvAssetId = (TextView) findViewById(R.id.tvAssetId);
+        tvLastUpdate = (TextView) findViewById(R.id.tvLastUpdate);
 
         ivLocation = (ImageView) findViewById(R.id.ivLocation);
         ivLocation.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_map_marker)
@@ -71,6 +98,9 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         ivRefresh.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_refresh)
                 .color(Color.GRAY));
         ivRefresh = (ImageView) findViewById(R.id.ivRefresh);
+        ivClock= (ImageView) findViewById(R.id.ivClock);
+        ivClock.setImageDrawable(new IconDrawable(this, FontAwesomeIcons.fa_clock_o)
+                .color(Color.GRAY));
 
         fab = (FloatingActionButton) findViewById(R.id.fab);
 
@@ -106,7 +136,16 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         });
 
+        realm = Realm.getDefaultInstance();
 
+        LocationInfo lastLocationInfo = realm.where(LocationInfo.class).findAll().last();
+
+        if(lastLocationInfo != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(lastLocationInfo.getDate());
+            String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+            tvLastUpdate.setText(date);
+        }
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -138,6 +177,13 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .findFragmentById(R.id.map);
             mapFragment.getMapAsync(this);
         }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+
+        tvAssetId.setText(GlobalVariables.getAssetId(this));
     }
 
     @Override
@@ -206,7 +252,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             Map<String, String> params = new HashMap<String, String>();
             params.put("email", GlobalVariables.getEmail(this));
             params.put("password", GlobalVariables.getPassword(this));
-            params.put("assetId", GlobalVariables.getAssertId(this));
+            params.put("assetId", GlobalVariables.getAssetId(this).replaceAll("-", ""));
             params.put("latitude", String.valueOf(location.getLatitude()));
             params.put("longitude", String.valueOf(location.getLongitude()));
             params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
@@ -214,7 +260,41 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
             JSONObject param = new JSONObject(params);
 
-            SendLocationRequest.send(this, param);
+            realm.beginTransaction();
+            final LocationInfo locationInfo = realm.createObject(LocationInfo.class);
+            locationInfo.setLatitude(location.getLatitude());
+            locationInfo.setLongitude(location.getLongitude());
+            locationInfo.setManually(true);
+            locationInfo.setDate(Calendar.getInstance().getTimeInMillis());
+
+            SendLocationRequest jsonObjectRequest = new SendLocationRequest(param,
+                    new Response.Listener<JSONObject>() {
+                        @Override
+                        public void onResponse(JSONObject response) {
+                            Log.d("myLogs", "response :"+response);
+                            locationInfo.setSuccess(true);
+
+                            realm.commitTransaction();
+                        }
+                    }, new Response.ErrorListener() {
+                @Override
+                public void onErrorResponse(VolleyError error) {
+                    locationInfo.setSuccess(false);
+
+                    realm.commitTransaction();
+                    Log.d("myLogs", "Error: " + error.toString());
+                }
+            }){
+
+                @Override
+                public Map<String, String> getHeaders() throws AuthFailureError {
+                    Map<String, String> params = new HashMap<String, String>();
+                    params.put("Content-Type", "application/json");
+                    return params;
+                }
+            };
+
+            API.getInstance(this).addToRequestQueue(jsonObjectRequest);
         }
     }
 
