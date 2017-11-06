@@ -11,12 +11,14 @@ import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
 import android.support.v4.app.NotificationCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.util.Log;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.gocodes.locationtracker.R;
+import com.gocodes.locationtracker.model.LocationInfo;
 import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
 import com.gocodes.locationtracker.ui.activities.MainActivity;
@@ -25,8 +27,11 @@ import com.gocodes.locationtracker.utils.LogWriter;
 
 import org.json.JSONObject;
 
+import java.util.Calendar;
 import java.util.HashMap;
 import java.util.Map;
+
+import io.realm.Realm;
 
 public class LocationService extends Service {
     private static final String TAG = "tracker_service";
@@ -34,6 +39,10 @@ public class LocationService extends Service {
 
     private static final float LOCATION_MIN_DISTANCE = 10f;
     private static final int REAL_TIME_INTERVAL = 60000;
+
+    public static final String ACTION_LOCATION_UPDATED = "location_updated";
+
+    private Realm realm;
 
     private class TimeLocationListener implements android.location.LocationListener {
         @Override
@@ -144,6 +153,8 @@ public class LocationService extends Service {
         LogWriter.writeToFile( "onCreate");
         initializeLocationManager();
 
+        realm = Realm.getDefaultInstance();
+
         int byTimeInterval = Integer.valueOf(GlobalVariables.FREQUENCIES[GlobalVariables.getFrequencyIndex(this)]);
         byTimeInterval = 1000 * 120;
 
@@ -221,7 +232,7 @@ public class LocationService extends Service {
         }
     }
 
-    private void sendLocationUpdates(Location location) {
+    private void sendLocationUpdates(final Location location) {
         if (location != null) {
             Map<String, String> params = new HashMap<String, String>();
             params.put("email", GlobalVariables.getEmail(this));
@@ -234,17 +245,23 @@ public class LocationService extends Service {
 
             JSONObject param = new JSONObject(params);
 
-
             SendLocationRequest jsonObjectRequest = new SendLocationRequest(param,
                     new Response.Listener<JSONObject>() {
                         @Override
                         public void onResponse(JSONObject response) {
                             Log.d("myLogs", "response :"+response);
+
+                            updateLocationInfo(location, true);
+
+                            sendBroadcastMessage();
                         }
                     }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
                     Log.d("myLogs", "Error: " + error.toString());
+                    updateLocationInfo(location, false);
+
+                    sendBroadcastMessage();
                 }
             }){
 
@@ -258,5 +275,24 @@ public class LocationService extends Service {
 
             API.getInstance(this).addToRequestQueue(jsonObjectRequest);
         }
+    }
+
+    private void sendBroadcastMessage() {
+        Intent intent = new Intent(ACTION_LOCATION_UPDATED);
+
+        LocalBroadcastManager.getInstance(this).sendBroadcast(intent);
+    }
+
+    private synchronized void updateLocationInfo(Location location, boolean success) {
+        realm.beginTransaction();
+        final LocationInfo locationInfo = realm.createObject(LocationInfo.class);
+        locationInfo.setLatitude(location.getLatitude());
+        locationInfo.setLongitude(location.getLongitude());
+        locationInfo.setManually(false);
+        locationInfo.setDate(Calendar.getInstance().getTimeInMillis());
+
+        locationInfo.setSuccess(success);
+
+        realm.commitTransaction();
     }
 }

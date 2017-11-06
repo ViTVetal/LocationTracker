@@ -2,8 +2,10 @@ package com.gocodes.locationtracker.ui.activities;
 
 import android.Manifest;
 import android.app.ActivityManager;
+import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.Intent;
+import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
 import android.location.Criteria;
@@ -12,6 +14,7 @@ import android.location.LocationManager;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
+import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
@@ -20,6 +23,7 @@ import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
+import android.widget.LinearLayout;
 import android.widget.SeekBar;
 import android.widget.Spinner;
 import android.widget.TextView;
@@ -62,6 +66,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private FloatingActionButton fab;
     private Spinner spMapType;
     private TextView tvAssetId, tvLastUpdate;
+    private LinearLayout llLastUpdate;
 
     private LocationManager locationManager;
 
@@ -83,6 +88,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         TextView tvTitle = (TextView) findViewById(R.id.tvTitle);
         tvTitle.setText(getResources().getString(R.string.app_name));
+
+        llLastUpdate = (LinearLayout) findViewById(R.id.llLastUpdate);
 
         tvAssetId = (TextView) findViewById(R.id.tvAssetId);
         tvLastUpdate = (TextView) findViewById(R.id.tvLastUpdate);
@@ -112,6 +119,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     .color(Color.WHITE).sizeDp(SizeConverter.dpToPx(24, this)));
         }
 
+        LocalBroadcastManager.getInstance(this).registerReceiver(
+                new BroadcastReceiver() {
+                    @Override
+                    public void onReceive(Context context, Intent intent) {
+                        updateLastLocationDate();
+                    }
+                }, new IntentFilter(LocationService.ACTION_LOCATION_UPDATED)
+        );
 
         spMapType = (Spinner) findViewById(R.id.spMapType);
         spMapType.setOnItemSelectedListener(new AdapterView.OnItemSelectedListener() {
@@ -138,14 +153,6 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         realm = Realm.getDefaultInstance();
 
-        LocationInfo lastLocationInfo = realm.where(LocationInfo.class).findAll().last();
-
-        if(lastLocationInfo != null) {
-            Calendar cal = Calendar.getInstance();
-            cal.setTimeInMillis(lastLocationInfo.getDate());
-            String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
-            tvLastUpdate.setText(date);
-        }
         // Here, thisActivity is the current activity
         if (ContextCompat.checkSelfPermission(this,
                 Manifest.permission.ACCESS_FINE_LOCATION)
@@ -184,6 +191,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         super.onResume();
 
         tvAssetId.setText(GlobalVariables.getAssetId(this));
+
+        updateLastLocationDate();
     }
 
     @Override
@@ -275,6 +284,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                             locationInfo.setSuccess(true);
 
                             realm.commitTransaction();
+
+                            updateLastLocationDate();
                         }
                     }, new Response.ErrorListener() {
                 @Override
@@ -282,6 +293,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     locationInfo.setSuccess(false);
 
                     realm.commitTransaction();
+
+                    updateLastLocationDate();
                     Log.d("myLogs", "Error: " + error.toString());
                 }
             }){
@@ -314,6 +327,21 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
             }
         }
         return bestLocation;
+    }
+
+    private void updateLastLocationDate() {
+        LocationInfo lastLocationInfo = realm.where(LocationInfo.class).findAll().last();
+
+        if(lastLocationInfo != null) {
+            Calendar cal = Calendar.getInstance();
+            cal.setTimeInMillis(lastLocationInfo.getDate());
+            String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+            tvLastUpdate.setText(date);
+
+            llLastUpdate.setVisibility(View.VISIBLE);
+        } else {
+            llLastUpdate.setVisibility(View.GONE);
+        }
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
