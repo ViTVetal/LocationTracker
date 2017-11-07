@@ -1,7 +1,9 @@
 package com.gocodes.locationtracker.ui.adapters;
 
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
+import android.support.v7.widget.CardView;
 import android.support.v7.widget.RecyclerView;
 import android.text.format.DateFormat;
 import android.view.LayoutInflater;
@@ -12,6 +14,8 @@ import android.widget.TextView;
 
 import com.gocodes.locationtracker.R;
 import com.gocodes.locationtracker.model.LocationInfo;
+import com.gocodes.locationtracker.ui.activities.HistoryActivity;
+import com.gocodes.locationtracker.ui.activities.MapActivity;
 import com.gocodes.locationtracker.utils.SizeConverter;
 import com.joanzapata.iconify.IconDrawable;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
@@ -30,6 +34,7 @@ public class LocationInfoAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
     private RealmResults<LocationInfo> mDataset;
 
     public static class LocationInfoItem extends RecyclerView.ViewHolder {
+        public CardView cardView;
         public TextView tvDate;
         public TextView tvLocation;
         public ImageView ivClock;
@@ -65,36 +70,49 @@ public class LocationInfoAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
         vh.ivSuccess = (ImageView) v.findViewById(R.id.ivSuccess);
         vh.ivMove = (ImageView) v.findViewById(R.id.ivMove);
 
+        vh.cardView = (CardView) v.findViewById(R.id.cardView);
+
         return vh;
     }
 
     public void onBindViewHolder(RecyclerView.ViewHolder holder, int position) {
-        LocationInfo locationInfo = mDataset.get(position);
+        final LocationInfo locationInfo = mDataset.get(position);
 
         LocationInfoItem locationInfoItem = (LocationInfoItem) holder;
 
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(locationInfo.getDate());
-        String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+        final String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
         locationInfoItem.tvDate.setText(date);
 
         locationInfoItem.tvLocation.setText(locationInfo.getLatitude() + " " + locationInfo.getLongitude());
 
         if(locationInfo.isSuccess()) {
-            locationInfoItem.ivLocation.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_check)
+            locationInfoItem.ivSuccess.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_check)
                     .color(Color.GREEN));
         } else {
-            locationInfoItem.ivLocation.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_times)
+            locationInfoItem.ivSuccess.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_times)
                     .color(Color.RED));
         }
 
 
         if(locationInfo.isOnMove()) {
-            locationInfoItem.ivLocation.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_arrows)
+            locationInfoItem.ivMove.setImageDrawable(new IconDrawable(activity, FontAwesomeIcons.fa_arrows)
                     .color(Color.GRAY));
         } else {
-            locationInfoItem.ivLocation.setImageDrawable(null);
+            locationInfoItem.ivMove.setImageDrawable(null);
         }
+
+        locationInfoItem.cardView.setOnClickListener(new View.OnClickListener() {
+            @Override
+            public void onClick(View view) {
+                Intent intent = new Intent(activity, MapActivity.class);
+                intent.putExtra("latitude", locationInfo.getLatitude());
+                intent.putExtra("longitude", locationInfo.getLongitude());
+                intent.putExtra("date", date);
+                activity.startActivity(intent);
+            }
+        });
     }
 
     @Override

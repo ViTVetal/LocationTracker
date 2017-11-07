@@ -18,9 +18,7 @@ import static android.content.Context.MODE_APPEND;
  */
 
 public class LogWriter {
-    public static void writeToFile(String data)
-    {
-     /*   // Get the directory for the user's public pictures directory.
+    public static void writeToFile(String data) {
         final File path =
                 Environment.getExternalStoragePublicDirectory
                         (
@@ -28,19 +26,13 @@ public class LogWriter {
                                 Environment.DIRECTORY_DCIM + "/YourFolder/"
                         );
 
-        // Make sure the path directory exists.
-        if(!path.exists())
-        {
-            // Make it, if it doesn't exit
+        if(!path.exists()) {
             path.mkdirs();
         }
 
         final File file = new File(path, "config.txt");
 
-        // Save your stream, don't forget to flush() it before closing it.
-
-        try
-        {
+        try {
             if(!file.exists())
                 file.createNewFile();
             FileWriter writer = new FileWriter(file,true);
@@ -48,9 +40,8 @@ public class LogWriter {
             writer.flush();
             writer.close();
         }
-        catch (IOException e)
-        {
+        catch (IOException e) {
             Log.e("Exception", "File write failed: " + e.toString());
-        } */
+        }
     }
 }

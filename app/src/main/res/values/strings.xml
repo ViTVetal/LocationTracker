@@ -16,6 +16,8 @@
     <string name="empty_password">Password cannot be empty</string>
     <string name="empty_assert_id">AssertId cannot be empty</string>
     <string name="updated_successfully">Updated Successfully</string>
+    <string name="unsuccessful">Unsuccessful</string>
+    <string name="history">History</string>
 
     <string-array name="map_types">
         <item>Map</item>

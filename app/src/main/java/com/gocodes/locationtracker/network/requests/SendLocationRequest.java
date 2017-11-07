@@ -36,7 +36,7 @@ public class SendLocationRequest extends JsonObjectRequest  {
     @Override
     protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
         try {
-            Log.d("myLogs", "status code " + response.statusCode);
+           // Log.d("myLogs", "status code " + response.statusCode);
             if(response.statusCode == 200) {
                 return Response.success(
                         new JSONObject(),
@@ -45,7 +45,7 @@ public class SendLocationRequest extends JsonObjectRequest  {
                 return Response.error(new ParseError());
             }
         } catch (Exception e) {
-            Log.d("myLogs", e.toString());
+           // Log.d("myLogs", e.toString());
             return Response.error(new ParseError(e));
         }
     }

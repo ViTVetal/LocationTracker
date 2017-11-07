@@ -1,7 +1,5 @@
 package com.gocodes.locationtracker.services;
 
-import android.app.Notification;
-import android.app.PendingIntent;
 import android.app.Service;
 import android.content.Context;
 import android.content.Intent;
@@ -10,20 +8,15 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
-import android.support.v4.app.NotificationCompat;
 import android.support.v4.content.LocalBroadcastManager;
-import android.util.Log;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.gocodes.locationtracker.R;
 import com.gocodes.locationtracker.model.LocationInfo;
 import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
-import com.gocodes.locationtracker.ui.activities.MainActivity;
 import com.gocodes.locationtracker.utils.GlobalVariables;
-import com.gocodes.locationtracker.utils.LogWriter;
 
 import org.json.JSONObject;
 
@@ -38,7 +31,7 @@ public class LocationService extends Service {
     private LocationManager mLocationManager = null;
 
     private static final float LOCATION_MIN_DISTANCE = 10f;
-    private static final int REAL_TIME_INTERVAL = 60000;
+    private static final int REAL_TIME_INTERVAL = 60 * 1000;
 
     public static final String ACTION_LOCATION_UPDATED = "location_updated";
 
@@ -47,90 +40,42 @@ public class LocationService extends Service {
     private class TimeLocationListener implements android.location.LocationListener {
         @Override
         public void onLocationChanged(Location location) {
-            Log.d("myLogs", location + "");
-            LogWriter.writeToFile( "Time: " + location);
-
             sendLocationUpdates(location);
         }
 
         @Override
         public void onProviderDisabled(String provider) {
-            Log.d("myLogs","onProviderDisabled Time: " + provider);
-            LogWriter.writeToFile( "Time: " + provider);
         }
 
         @Override
         public void onProviderEnabled(String provider) {
-            Log.d("myLogs","onProviderEnabled Time: " + provider);
-            LogWriter.writeToFile( "Time: " + provider);
         }
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
-            Log.d("myLogs","onStatusChanged Time: " + provider);
-            LogWriter.writeToFile( "Time: " + provider);
-        }
-    }
-
-    private class MovementLocationListener implements android.location.LocationListener {
-        @Override
-        public void onLocationChanged(Location location) {
-            Log.d("myLogs", location + "");
-            LogWriter.writeToFile( "Movement: " + location);
-
-            sendLocationUpdates(location);
-        }
-
-        @Override
-        public void onProviderDisabled(String provider) {
-            Log.d("myLogs","onProviderDisabled Movement: " + provider);
-            LogWriter.writeToFile( "Movement: " + provider);
-        }
-
-        @Override
-        public void onProviderEnabled(String provider) {
-            Log.d("myLogs","onProviderEnabled Movement: " + provider);
-            LogWriter.writeToFile( "Movement: " + provider);
-        }
-
-        @Override
-        public void onStatusChanged(String provider, int status, Bundle extras) {
-            Log.d("myLogs","onStatusChanged Movement: " + provider);
-            LogWriter.writeToFile( "Movement: " + provider);
         }
     }
 
     private class RealTimeLocationListener implements android.location.LocationListener {
         @Override
         public void onLocationChanged(Location location) {
-            Log.d("myLogs", location + "");
-            LogWriter.writeToFile( "RealTime: " + location);
-
             sendLocationUpdates(location);
         }
 
         @Override
         public void onProviderDisabled(String provider) {
-            Log.d("myLogs","onProviderDisabled RealTime: " + provider);
-            LogWriter.writeToFile( "RealTime: " + provider);
         }
 
         @Override
         public void onProviderEnabled(String provider) {
-            Log.d("myLogs","onProviderEnabled RealTime: " + provider);
-            LogWriter.writeToFile( "RealTime: " + provider);
         }
 
         @Override
         public void onStatusChanged(String provider, int status, Bundle extras) {
-            Log.d("myLogs","onStatusChanged RealTime: " + provider);
-            LogWriter.writeToFile( "RealTime: " + provider);
         }
     }
 
     TimeLocationListener timeLocationListener = new TimeLocationListener();
-
-    MovementLocationListener movementLocationListener = new MovementLocationListener();
 
     RealTimeLocationListener realTimeLocationListener = new RealTimeLocationListener();
 
@@ -141,92 +86,63 @@ public class LocationService extends Service {
 
     @Override
     public int onStartCommand(Intent intent, int flags, int startId) {
-        Log.d("myLogs","onStartCommand");
-        LogWriter.writeToFile( "onStartCommand");
         super.onStartCommand(intent, flags, startId);
         return START_STICKY;
     }
 
     @Override
     public void onCreate() {
-        Log.d("myLogs","onCreate");
-        LogWriter.writeToFile( "onCreate");
         initializeLocationManager();
 
         realm = Realm.getDefaultInstance();
 
         int byTimeInterval = Integer.valueOf(GlobalVariables.FREQUENCIES[GlobalVariables.getFrequencyIndex(this)]);
-        byTimeInterval = 1000 * 120;
+        byTimeInterval = 1000 * 60 * 60 * byTimeInterval;
 
         Criteria criteria = new Criteria();
         criteria.setAccuracy(Criteria.ACCURACY_FINE);
-        Log.d("myLogs", "oncreate " + mLocationManager);
+
+        float minDistance = 0;
+        if(GlobalVariables.isUpdateOnMove(this))
+            minDistance = LOCATION_MIN_DISTANCE;
+
         if(GlobalVariables.isRealTimeUpdate(this)) {
             try {
                 mLocationManager.requestLocationUpdates(
-                        REAL_TIME_INTERVAL, 0, criteria,
+                        REAL_TIME_INTERVAL, minDistance, criteria,
                         realTimeLocationListener, null);
             } catch (java.lang.SecurityException ex) {
-                Log.d("myLogs","fail to request location update, ignore" + ex);
-                LogWriter.writeToFile("fail to request location update, ignore" + ex);
+
             } catch (IllegalArgumentException ex) {
-                Log.d("myLogs","network provider does not exist, " + ex.getMessage());
-                LogWriter.writeToFile( "network provider does not exist, " + ex.getMessage());
+
             }
         } else {
             try {
                 mLocationManager.requestLocationUpdates(
-                        byTimeInterval, 0, criteria,
+                        byTimeInterval, minDistance, criteria,
                         timeLocationListener, null);
-                Log.d("myLogs", "byTime");
             } catch (java.lang.SecurityException ex) {
-                Log.d("myLogs", "fail to request location update, ignore" + ex);
-                LogWriter.writeToFile("fail to request location update, ignore" + ex);
+
             } catch (IllegalArgumentException ex) {
-                Log.d("myLogs", "network provider does not exist, " + ex.getMessage());
-                LogWriter.writeToFile("network provider does not exist, " + ex.getMessage());
+
             }
         }
-
-        boolean updateOnMove = GlobalVariables.isUpdateOnMove(this);
-
-        if(updateOnMove) {
-            try {
-                mLocationManager.requestLocationUpdates(
-                        0, LOCATION_MIN_DISTANCE, criteria,
-                        movementLocationListener, null);
-                Log.d("myLogs", "move");
-            } catch (java.lang.SecurityException ex) {
-                Log.d("myLogs",  "fail to request location update, ignore" + ex);
-                LogWriter.writeToFile( "fail to request location update, ignore" + ex);
-            } catch (IllegalArgumentException ex) {
-                Log.d("myLogs", "network provider does not exist, " + ex.getMessage());
-                LogWriter.writeToFile("network provider does not exist, " + ex.getMessage());
-            }
-        }
-
     }
 
     @Override
     public void onDestroy() {
-        Log.d("myLogs", "onDestroy");
-        LogWriter.writeToFile( "onDestroy");
         super.onDestroy();
         if (mLocationManager != null) {
             try {
                 mLocationManager.removeUpdates(timeLocationListener);
                 mLocationManager.removeUpdates(realTimeLocationListener);
-                mLocationManager.removeUpdates(movementLocationListener);
             } catch (Exception ex) {
-                Log.d("myLogs", "fail to remove location listners, ignore" + ex);
-                LogWriter.writeToFile( "fail to remove location listners, ignore" + ex);
+
             }
         }
     }
 
     private void initializeLocationManager() {
-        Log.d("myLogs", "initializeLocationManager");
-        LogWriter.writeToFile( "initializeLocationManager");
         if (mLocationManager == null) {
             mLocationManager = (LocationManager) getApplicationContext().getSystemService(Context.LOCATION_SERVICE);
         }
@@ -249,8 +165,6 @@ public class LocationService extends Service {
                     new Response.Listener<JSONObject>() {
                         @Override
                         public void onResponse(JSONObject response) {
-                            Log.d("myLogs", "response :"+response);
-
                             updateLocationInfo(location, true);
 
                             sendBroadcastMessage();
@@ -258,7 +172,6 @@ public class LocationService extends Service {
                     }, new Response.ErrorListener() {
                 @Override
                 public void onErrorResponse(VolleyError error) {
-                    Log.d("myLogs", "Error: " + error.toString());
                     updateLocationInfo(location, false);
 
                     sendBroadcastMessage();
@@ -289,8 +202,8 @@ public class LocationService extends Service {
         locationInfo.setLatitude(location.getLatitude());
         locationInfo.setLongitude(location.getLongitude());
         locationInfo.setManually(false);
+        locationInfo.setOnMove(GlobalVariables.isUpdateOnMove(this));
         locationInfo.setDate(Calendar.getInstance().getTimeInMillis());
-
         locationInfo.setSuccess(success);
 
         realm.commitTransaction();

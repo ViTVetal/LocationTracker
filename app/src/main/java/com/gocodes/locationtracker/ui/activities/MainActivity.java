@@ -8,39 +8,34 @@ import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.pm.PackageManager;
 import android.graphics.Color;
-import android.location.Criteria;
 import android.location.Location;
 import android.location.LocationManager;
+import android.os.Bundle;
 import android.support.design.widget.FloatingActionButton;
 import android.support.v4.app.ActivityCompat;
 import android.support.v4.content.ContextCompat;
 import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
-import android.os.Bundle;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
-import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
 import android.widget.LinearLayout;
-import android.widget.SeekBar;
+import android.widget.ProgressBar;
 import android.widget.Spinner;
 import android.widget.TextView;
+import android.widget.Toast;
 
 import com.android.volley.AuthFailureError;
-import com.android.volley.Request;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
-import com.android.volley.toolbox.JsonObjectRequest;
 import com.gocodes.locationtracker.R;
-import com.gocodes.locationtracker.db.LocalDB;
 import com.gocodes.locationtracker.model.LocationInfo;
 import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
 import com.gocodes.locationtracker.services.LocationService;
 import com.gocodes.locationtracker.utils.GlobalVariables;
-import com.gocodes.locationtracker.utils.LogWriter;
 import com.gocodes.locationtracker.utils.SizeConverter;
 import com.google.android.gms.maps.CameraUpdateFactory;
 import com.google.android.gms.maps.GoogleMap;
@@ -48,7 +43,6 @@ import com.google.android.gms.maps.OnMapReadyCallback;
 import com.google.android.gms.maps.SupportMapFragment;
 import com.google.android.gms.maps.model.LatLng;
 import com.joanzapata.iconify.IconDrawable;
-import com.joanzapata.iconify.Iconify;
 import com.joanzapata.iconify.fonts.FontAwesomeIcons;
 
 import org.json.JSONObject;
@@ -67,6 +61,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private Spinner spMapType;
     private TextView tvAssetId, tvLastUpdate;
     private LinearLayout llLastUpdate;
+    private ProgressBar progress;
 
     private LocationManager locationManager;
 
@@ -88,6 +83,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
         TextView tvTitle = (TextView) findViewById(R.id.tvTitle);
         tvTitle.setText(getResources().getString(R.string.app_name));
+
+        progress = (ProgressBar) findViewById(R.id.progress);
 
         llLastUpdate = (LinearLayout) findViewById(R.id.llLastUpdate);
 
@@ -170,7 +167,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
                 // No explanation needed, we can request the permission.
 
-                String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.WRITE_EXTERNAL_STORAGE};
+                String[] PERMISSIONS = {Manifest.permission.ACCESS_FINE_LOCATION/*, Manifest.permission.WRITE_EXTERNAL_STORAGE*/};
 
                     ActivityCompat.requestPermissions(this, PERMISSIONS, LOCATION_PERMISSION_REQUEST);
 
@@ -201,12 +198,10 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         map.setMyLocationEnabled(true);
 
         Location location = getLastKnownLocation();
-        Log.d("myLogs", location + " loc");
+
         if (location != null) {
             map.moveCamera(CameraUpdateFactory.newLatLngZoom(new LatLng(location.getLatitude(), location.getLongitude()), 12));
         }
-
-      //  googleMap.moveCamera(CameraUpdateFactory.newLatLngZoom(lastLocation, 12));
     }
 
     public void onClickChangeState(View v) {
@@ -256,7 +251,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
 
     public void onClickUpdateLocation(View view) {
         Location location = getLastKnownLocation();
-        Log.d("myLogs", location + " loc");
+
         if (location != null) {
             Map<String, String> params = new HashMap<String, String>();
             params.put("email", GlobalVariables.getEmail(this));
@@ -280,12 +275,17 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     new Response.Listener<JSONObject>() {
                         @Override
                         public void onResponse(JSONObject response) {
-                            Log.d("myLogs", "response :"+response);
                             locationInfo.setSuccess(true);
 
                             realm.commitTransaction();
 
                             updateLastLocationDate();
+
+                            progress.setVisibility(View.GONE);
+
+                            Toast toast = Toast.makeText(getApplicationContext(),
+                                    getResources().getString(R.string.updated_successfully), Toast.LENGTH_SHORT);
+                            toast.show();
                         }
                     }, new Response.ErrorListener() {
                 @Override
@@ -295,7 +295,12 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     realm.commitTransaction();
 
                     updateLastLocationDate();
-                    Log.d("myLogs", "Error: " + error.toString());
+
+                    progress.setVisibility(View.GONE);
+
+                    Toast toast = Toast.makeText(getApplicationContext(),
+                            getResources().getString(R.string.unsuccessful), Toast.LENGTH_SHORT);
+                    toast.show();
                 }
             }){
 
@@ -306,6 +311,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
                     return params;
                 }
             };
+
+            progress.setVisibility(View.VISIBLE);
 
             API.getInstance(this).addToRequestQueue(jsonObjectRequest);
         }
@@ -330,9 +337,14 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     private void updateLastLocationDate() {
-        LocationInfo lastLocationInfo = realm.where(LocationInfo.class).findAll().last();
+        RealmResults<LocationInfo> results =  realm.where(LocationInfo.class).findAll();
 
-        if(lastLocationInfo != null) {
+        LocationInfo lastLocationInfo = null;
+
+        if(results.size() > 0)
+            lastLocationInfo = results.last();
+
+        if (lastLocationInfo != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(lastLocationInfo.getDate());
             String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
@@ -342,6 +354,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         } else {
             llLastUpdate.setVisibility(View.GONE);
         }
+
     }
 
     private boolean isServiceRunning(Class<?> serviceClass) {
