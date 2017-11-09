@@ -8,7 +8,8 @@
     <string name="password">Password</string>
     <string name="asset_id">Asset Id \'ABSD-DEC2\'</string>
     <string name="update_frequency">Update Frequency in Hours</string>
-    <string name="update">Update</string>
+    <string name="save">Save</string>
+    <string name="saved_successfully">Saved successfully</string>
     <string name="update_on_move">Update on Move</string>
     <string name="update_history">Update History</string>
     <string name="real_time">Real-Time Update</string>

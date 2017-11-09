@@ -133,7 +133,7 @@ public class SettingsActivity extends AppCompatActivity {
             startService(intent);
         }
 
-        Toast toast = Toast.makeText(this, getResources().getString(R.string.updated_successfully), Toast.LENGTH_LONG);
+        Toast toast = Toast.makeText(this, getResources().getString(R.string.saved_successfully), Toast.LENGTH_LONG);
         toast.show();
     }
 

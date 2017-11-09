@@ -347,7 +347,7 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
         if (lastLocationInfo != null) {
             Calendar cal = Calendar.getInstance();
             cal.setTimeInMillis(lastLocationInfo.getDate());
-            String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+            String date = DateFormat.format("MM-dd-yyyy HH:mm:ss", cal).toString();
             tvLastUpdate.setText(date);
 
             llLastUpdate.setVisibility(View.VISIBLE);

@@ -82,7 +82,7 @@ public class LocationInfoAdapter extends RecyclerView.Adapter<RecyclerView.ViewH
 
         Calendar cal = Calendar.getInstance();
         cal.setTimeInMillis(locationInfo.getDate());
-        final String date = DateFormat.format("dd-MM-yyyy HH:mm:ss", cal).toString();
+        final String date = DateFormat.format("MM-dd-yyyy HH:mm:ss", cal).toString();
         locationInfoItem.tvDate.setText(date);
 
         locationInfoItem.tvLocation.setText(locationInfo.getLatitude() + " " + locationInfo.getLongitude());
