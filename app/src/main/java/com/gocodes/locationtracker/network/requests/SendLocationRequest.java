@@ -3,6 +3,7 @@ package com.gocodes.locationtracker.network.requests;
 import android.util.Log;
 
 import com.android.volley.AuthFailureError;
+import com.android.volley.DefaultRetryPolicy;
 import com.android.volley.NetworkResponse;
 import com.android.volley.ParseError;
 import com.android.volley.Request;
@@ -21,9 +22,14 @@ import java.util.Map;
  */
 
 public class SendLocationRequest extends JsonObjectRequest  {
+    private final int REQUEST_TIMEOUT_LIMIT_SECONDS = 10; // Value in seconds
+
     public SendLocationRequest(JSONObject param, Response.Listener<JSONObject> listener,
                                                 Response.ErrorListener errorListener) {
         super(Request.Method.POST, GlobalVariables.SERVER_URL, param, listener, errorListener);
+
+        this.setRetryPolicy(new DefaultRetryPolicy(REQUEST_TIMEOUT_LIMIT_SECONDS * 1000, DefaultRetryPolicy.DEFAULT_MAX_RETRIES,
+                DefaultRetryPolicy.DEFAULT_BACKOFF_MULT));
     }
 
     @Override
@@ -36,7 +42,7 @@ public class SendLocationRequest extends JsonObjectRequest  {
     @Override
     protected Response<JSONObject> parseNetworkResponse(NetworkResponse response) {
         try {
-           // Log.d("myLogs", "status code " + response.statusCode);
+            //Log.d("myLogs", "status code " + response.statusCode);
             if(response.statusCode == 200) {
                 return Response.success(
                         new JSONObject(),
