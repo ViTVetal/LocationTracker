@@ -18,6 +18,7 @@ import android.support.v4.content.LocalBroadcastManager;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.Toolbar;
 import android.text.format.DateFormat;
+import android.util.Log;
 import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ImageView;
@@ -72,6 +73,8 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     private int check = 0;
 
     private Realm realm;
+
+    private boolean updating;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -250,71 +253,78 @@ public class MainActivity extends AppCompatActivity implements OnMapReadyCallbac
     }
 
     public void onClickUpdateLocation(View view) {
-        Location location = getLastKnownLocation();
+        if(!updating) {
+            updating = true;
+            Location location = getLastKnownLocation();
 
-        if (location != null) {
-            Map<String, String> params = new HashMap<String, String>();
-            params.put("email", GlobalVariables.getEmail(this));
-            params.put("password", GlobalVariables.getPassword(this));
-            params.put("assetId", GlobalVariables.getAssetId(this).replaceAll("-", ""));
-            params.put("latitude", String.valueOf(location.getLatitude()));
-            params.put("longitude", String.valueOf(location.getLongitude()));
-            params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
-            params.put("customValue1", "934");
+            if (location != null) {
+                Map<String, String> params = new HashMap<String, String>();
+                params.put("email", GlobalVariables.getEmail(this));
+                params.put("password", GlobalVariables.getPassword(this));
+                params.put("assetId", GlobalVariables.getAssetId(this).replaceAll("-", ""));
+                params.put("latitude", String.valueOf(location.getLatitude()));
+                params.put("longitude", String.valueOf(location.getLongitude()));
+                params.put("enableHistory", String.valueOf(GlobalVariables.isUpdateHistory(this)));
+                params.put("customValue1", "934");
 
-            JSONObject param = new JSONObject(params);
+                JSONObject param = new JSONObject(params);
 
-            realm.beginTransaction();
-            final LocationInfo locationInfo = realm.createObject(LocationInfo.class);
-            locationInfo.setLatitude(location.getLatitude());
-            locationInfo.setLongitude(location.getLongitude());
-            locationInfo.setManually(true);
-            locationInfo.setDate(Calendar.getInstance().getTimeInMillis());
+                realm.beginTransaction();
+                final LocationInfo locationInfo = realm.createObject(LocationInfo.class);
+                locationInfo.setLatitude(location.getLatitude());
+                locationInfo.setLongitude(location.getLongitude());
+                locationInfo.setManually(true);
+                locationInfo.setDate(Calendar.getInstance().getTimeInMillis());
 
-            SendLocationRequest jsonObjectRequest = new SendLocationRequest(param,
-                    new Response.Listener<JSONObject>() {
-                        @Override
-                        public void onResponse(JSONObject response) {
-                            locationInfo.setSuccess(true);
+                SendLocationRequest jsonObjectRequest = new SendLocationRequest(param,
+                        new Response.Listener<JSONObject>() {
+                            @Override
+                            public void onResponse(JSONObject response) {
+                                locationInfo.setSuccess(true);
 
-                            realm.commitTransaction();
+                                realm.commitTransaction();
 
-                            updateLastLocationDate();
+                                updateLastLocationDate();
 
-                            progress.setVisibility(View.GONE);
+                                progress.setVisibility(View.GONE);
 
-                            Toast toast = Toast.makeText(getApplicationContext(),
-                                    getResources().getString(R.string.updated_successfully), Toast.LENGTH_SHORT);
-                            toast.show();
-                        }
-                    }, new Response.ErrorListener() {
-                @Override
-                public void onErrorResponse(VolleyError error) {
-                    locationInfo.setSuccess(false);
+                                Toast toast = Toast.makeText(getApplicationContext(),
+                                        getResources().getString(R.string.updated_successfully), Toast.LENGTH_SHORT);
+                                toast.show();
 
-                    realm.commitTransaction();
+                                updating = false;
+                            }
+                        }, new Response.ErrorListener() {
+                    @Override
+                    public void onErrorResponse(VolleyError error) {
+                        locationInfo.setSuccess(false);
 
-                    updateLastLocationDate();
+                        realm.commitTransaction();
 
-                    progress.setVisibility(View.GONE);
+                        updateLastLocationDate();
 
-                    Toast toast = Toast.makeText(getApplicationContext(),
-                            getResources().getString(R.string.unsuccessful), Toast.LENGTH_SHORT);
-                    toast.show();
-                }
-            }){
+                        progress.setVisibility(View.GONE);
 
-                @Override
-                public Map<String, String> getHeaders() throws AuthFailureError {
-                    Map<String, String> params = new HashMap<String, String>();
-                    params.put("Content-Type", "application/json");
-                    return params;
-                }
-            };
+                        Toast toast = Toast.makeText(getApplicationContext(),
+                                getResources().getString(R.string.unsuccessful), Toast.LENGTH_SHORT);
+                        toast.show();
 
-            progress.setVisibility(View.VISIBLE);
+                        updating = false;
+                    }
+                }) {
 
-            API.getInstance(this).addToRequestQueue(jsonObjectRequest);
+                    @Override
+                    public Map<String, String> getHeaders() throws AuthFailureError {
+                        Map<String, String> params = new HashMap<String, String>();
+                        params.put("Content-Type", "application/json");
+                        return params;
+                    }
+                };
+
+                progress.setVisibility(View.VISIBLE);
+
+                API.getInstance(this).addToRequestQueue(jsonObjectRequest);
+            }
         }
     }
 
