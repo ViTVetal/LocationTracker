@@ -8,7 +8,7 @@ import android.content.SharedPreferences;
  */
 
 public class GlobalVariables {
-    public static final String SERVER_URL = "https://55z4akhs63.execute-api.us-west-2.amazonaws.com/UpdateAssetLocation2";
+    public static final String SERVER_URL = "https://g4fg0by7e6.execute-api.us-west-2.amazonaws.com/UpdateAssetLocation2Prod";
 
     public static final String[] FREQUENCIES = {"1", "2", "4","8", "12", "24", "48"};
 
