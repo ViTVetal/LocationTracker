@@ -8,7 +8,9 @@ import android.location.Location;
 import android.location.LocationManager;
 import android.os.Bundle;
 import android.os.IBinder;
+import android.os.Looper;
 import android.support.v4.content.LocalBroadcastManager;
+import android.util.Log;
 
 import com.android.volley.AuthFailureError;
 import com.android.volley.Response;
@@ -17,6 +19,11 @@ import com.gocodes.locationtracker.model.LocationInfo;
 import com.gocodes.locationtracker.network.API;
 import com.gocodes.locationtracker.network.requests.SendLocationRequest;
 import com.gocodes.locationtracker.utils.GlobalVariables;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationCallback;
+import com.google.android.gms.location.LocationRequest;
+import com.google.android.gms.location.LocationResult;
+import com.google.android.gms.location.LocationServices;
 
 import org.json.JSONObject;
 
@@ -30,12 +37,29 @@ public class LocationService extends Service {
     private static final String TAG = "tracker_service";
     private LocationManager mLocationManager = null;
 
+    FusedLocationProviderClient fusedLocationClient;
+
     private static final float LOCATION_MIN_DISTANCE = 10f;
-    private static final int REAL_TIME_INTERVAL = 60 * 1000;
+    private static final int SEC = 1000;
+    private static final int MIN = 60 * SEC;
+    private static final int HOUR = 60 * MIN;
+    private static final int REAL_TIME_INTERVAL = 1 * MIN;
 
     public static final String ACTION_LOCATION_UPDATED = "location_updated";
 
     private Realm realm;
+
+    private LocationCallback locationCallback = new LocationCallback() {
+        @Override
+        public void onLocationResult(LocationResult locationResult) {
+            super.onLocationResult(locationResult); // why? this. is. retarded. Android.
+            Location currentLocation = locationResult.getLastLocation();
+
+            Log.d("myLogs", "update " + currentLocation);
+
+            sendLocationUpdates(currentLocation);
+        }
+    };
 
     private class TimeLocationListener implements android.location.LocationListener {
         @Override
@@ -92,21 +116,21 @@ public class LocationService extends Service {
 
     @Override
     public void onCreate() {
-        initializeLocationManager();
+       // initializeLocationManager();
 
         realm = Realm.getDefaultInstance();
 
-        int byTimeInterval = Integer.valueOf(GlobalVariables.FREQUENCIES[GlobalVariables.getFrequencyIndex(this)]);
-        byTimeInterval = 1000 * 60 * 60 * byTimeInterval;
+//        int byTimeInterval = Integer.valueOf(GlobalVariables.FREQUENCIES[GlobalVariables.getFrequencyIndex(this)]);
+//        byTimeInterval = 1000 * 60 * 60 * byTimeInterval;
+//
+//        Criteria criteria = new Criteria();
+//        criteria.setAccuracy(Criteria.ACCURACY_FINE);
+//
+//        float minDistance = 0;
+//        if(GlobalVariables.isUpdateOnMove(this))
+//            minDistance = LOCATION_MIN_DISTANCE;
 
-        Criteria criteria = new Criteria();
-        criteria.setAccuracy(Criteria.ACCURACY_FINE);
-
-        float minDistance = 0;
-        if(GlobalVariables.isUpdateOnMove(this))
-            minDistance = LOCATION_MIN_DISTANCE;
-
-        if(GlobalVariables.isRealTimeUpdate(this)) {
+        /*if(GlobalVariables.isRealTimeUpdate(this)) {
             try {
                 mLocationManager.requestLocationUpdates(
                         REAL_TIME_INTERVAL, minDistance, criteria,
@@ -126,20 +150,47 @@ public class LocationService extends Service {
             } catch (IllegalArgumentException ex) {
 
             }
+        } */
+
+        LocationRequest locationRequest = new LocationRequest();
+        if(GlobalVariables.isRealTimeUpdate(this)) {
+            locationRequest.setInterval(REAL_TIME_INTERVAL);
+            locationRequest.setFastestInterval(REAL_TIME_INTERVAL - 10 * SEC);
+        } else {
+            int byTimeInterval = Integer.valueOf(GlobalVariables.FREQUENCIES[GlobalVariables.getFrequencyIndex(this)]);
+            byTimeInterval = HOUR * byTimeInterval;
+
+            locationRequest.setInterval(byTimeInterval);
+            locationRequest.setFastestInterval(byTimeInterval - MIN * 10);
         }
+        locationRequest.setPriority(LocationRequest.PRIORITY_HIGH_ACCURACY);
+        if(GlobalVariables.isUpdateOnMove(this))
+            locationRequest.setSmallestDisplacement(LOCATION_MIN_DISTANCE);
+
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(getApplicationContext());
+        fusedLocationClient.requestLocationUpdates(locationRequest,
+                locationCallback, null);
     }
 
     @Override
     public void onDestroy() {
         super.onDestroy();
-        if (mLocationManager != null) {
-            try {
-                mLocationManager.removeUpdates(timeLocationListener);
-                mLocationManager.removeUpdates(realTimeLocationListener);
-            } catch (Exception ex) {
+        try {
+            if(fusedLocationClient != null)
+                fusedLocationClient.removeLocationUpdates(locationCallback);
+        } catch (Exception ex) {
 
-            }
         }
+//        if (mLocationManager != null) {
+//            try {
+//                fusedLocationClient.removeLocationUpdates(locationCallback);
+//
+//               // mLocationManager.removeUpdates(timeLocationListener);
+//               // mLocationManager.removeUpdates(realTimeLocationListener);
+//            } catch (Exception ex) {
+//
+//            }
+//        }
     }
 
     private void initializeLocationManager() {
